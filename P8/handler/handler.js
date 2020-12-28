@@ -426,39 +426,42 @@ exit:function(){
 };	
 }
 //accelerometer(wake on look)
-if (set.def.acctype==="BMA421"){
-	i2c.writeTo(0x18,0x40,0x17);
-	i2c.writeTo(0x18,0x7c,0x03);
-}else if (set.def.acctype==="SC7A20"){
-    i2c.writeTo(0x18,0x20,0x47); 
-    i2c.writeTo(0x18,0x23,0x80); 
+function getI16val(u8low, u8high) {
+  var i16val = u8low | (u8high << 8);
+  if (i16val >= 0x8000)
+    i16val -= 0x10000;
+  return i16val;
 }
+
 acc={
   loop:200,
   tid:-1,
   run:-1,
   go:1,
   up:0,
-  yedge:245,
-  xedge:25,
-  on:function(){
-	if (set.def.acctype==="BMA421"){i2c.writeTo(0x18,0x7d,0x04);i2c.writeTo(0x18,0x12);this.yedge=250;this.xedge=20;
-	}else {i2c.writeTo(0x18,0x01);this.yedge=235;this.xedge=30;}
-	this.run=1;this.init();},
-  off:function(){if (set.def.acctype==="BMA421")i2c.writeTo(0x18,0x7d,0x04);this.run=-1;},
-  init:function(){
+  yedge:250,
+  xedge:20,
+  on:function() {
+        i2c.writeTo(0x18, 0x7d, 0x04);
+        this.run = 1;
+        this.init();
+  },
+  off:function(){
+        i2c.writeTo(0x18, 0x7d, 0x04);
+        this.run = -1;
+  },
+  ReadRaw:function(){
+        var u8data;
+        i2c.writeTo(0x18, 0x12);
+        u8data = i2c.readFrom(0x18, 6);
+        return u8data;
+  },
+  init:function (){
     "ram";
 	if(this.run===-1) return;
-    var data;
-	if (set.def.acctype=="BMA421") data=i2c.readFrom(0x18,6);
-    else {data={}; data[3]=i2c.readFrom(0x18,1)+"";} 
+    var data=this.ReadRaw();
 	//print(data);
 	if (200<data[3]&&data[3]<this.yedge) {
-		if (set.def.acctype!="BMA421"){
-		    i2c.writeTo(0x18,3);
-			data[1]=i2c.readFrom(0x18,1)+"";
-		    i2c.writeTo(0x18,1);
-		}
 		if (data[1]<this.xedge||data[1]>=220) {
           //print(data);
           this.up=1;
@@ -484,8 +487,45 @@ acc={
 		t.tid=-1;
 		t.init(); 
     },this.loop,this);
+  },
+  getAccel: function() {
+    var data = this.ReadRaw();
+    var a = {};
+    a.x = getI16val(data[0], data[1]);
+    a.y = getI16val(data[2], data[3]);
+    a.z = getI16val(data[4], data[5]);
+    return a;
   }
 };
+
+if (set.def.acctype === "BMA421")
+{
+  i2c.writeTo(0x18, 0x40, 0x17);
+  i2c.writeTo(0x18, 0x7c, 0x03);
+} else /*if (set.def.acctype === "SC7A20")*/
+{
+  i2c.writeTo(0x18, 0x20, 0x47);  // 50hz xyz
+  i2c.writeTo(0x18, 0x23, 0x80);
+  acc.yedge = 235;
+  acc.xedge = 30;
+  acc.on = function () {
+    i2c.writeTo(0x18, 0x20, 0x47);  // 50hz xyz
+    this.run = 1;
+    this.init();
+  };
+  acc.off = function () {
+    // power down mode
+    i2c.writeTo(0x18, 0x20, 0x00);
+    this.run = -1;
+  };
+  acc.ReadRaw = function () {
+    var u8data;
+    i2c.writeTo(0x18, 0xa8);
+    u8data = i2c.readFrom(0x18, 6);
+    return u8data;
+  };
+}
+
 //themes -todo
 function col(no){
 	switch (no) {
