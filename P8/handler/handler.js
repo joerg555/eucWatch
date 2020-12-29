@@ -167,7 +167,7 @@ var face={
   off:function(page){ 
       if (this.pageCurr===-1) {print("face-1");return;}
       if (this.offid>=0) {clearTimeout(this.offid); this.offid=-1;}
-      if (face[this.pageCurr]!=-1) this.offms=face[this.pageCurr].offms;
+      if (face[this.pageCurr].offms!=-1) this.offms=face[this.pageCurr].offms;
       this.offid=setTimeout((c)=>{
         this.offid=-1;
 		//if (set.def.acc&&acc.tid==-1) acc.on();
@@ -441,22 +441,15 @@ acc={
   up:0,
   yedge:250,
   xedge:20,
-  on:function() {
-        i2c.writeTo(0x18, 0x7d, 0x04);
-        this.run = 1;
-        this.init();
-  },
-  off:function(){
-        i2c.writeTo(0x18, 0x7d, 0x04);
-        this.run = -1;
-  },
+  on:function(){
+	i2c.writeTo(0x18,0x7d,0x04);i2c.writeTo(0x18,0x12);
+	this.run=1;this.init();},
+  off:function(){i2c.writeTo(0x18,0x7d,0x04);this.run=-1;},
   ReadRaw:function(){
-        var u8data;
-        i2c.writeTo(0x18, 0x12);
-        u8data = i2c.readFrom(0x18, 6);
-        return u8data;
+	i2c.writeTo(0x18, 0x12);
+	return i2c.readFrom(0x18, 6);
   },
-  init:function (){
+  init:function(){
     "ram";
 	if(this.run===-1) return;
     var data=this.ReadRaw();
@@ -519,10 +512,8 @@ if (set.def.acctype === "BMA421")
     this.run = -1;
   };
   acc.ReadRaw = function () {
-    var u8data;
     i2c.writeTo(0x18, 0xa8);
-    u8data = i2c.readFrom(0x18, 6);
-    return u8data;
+    return i2c.readFrom(0x18, 6);
   };
 }
 
